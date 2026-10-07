@@ -78,3 +78,93 @@ Both behaviours were confirmed against the baseline.
 
 Two different parsing algorithms that happen to share one small rule. Sharing
 a rule is not the same as sharing a responsibility.
+
+## Refactoring B: extract the shared canonicalisation rule
+
+B1: added one private helper to PackageURL that performs the existing
+transformation and nothing else.
+
+    private static String canonicalizeQualifierKey(final String key) {
+        return StringUtil.toLowerCase(key);
+    }
+
+B2: parseQualifiers(Map) now calls the helper. Empty-value filtering unchanged.
+B3: parseQualifiers(String) calls the same helper. Duplicate-key detection
+stays exactly where it was.
+B4: the two methods were not unified.
+
+| Record | Evidence |
+| --- | --- |
+| mvn test | PASS - Tests run: 143, Failures: 0, Errors: 0, Skipped: 0 |
+| CS4928 checker | PASS - Tests run: 5, Failures: 0, Errors: 0 |
+| git diff --check | clean |
+| Second commit SHA | c5eadfd542dfd01bc0721685d09ea086aee77078 |
+
+Before to after: the lowercase-the-key rule now exists in one place and both
+parsing paths call it, while duplicate detection and empty-value filtering
+stayed in the methods they belong to.
+
+## Comparing against the baseline
+
+git diff --stat CS4928_BASELINE..HEAD, source files only:
+
+    PackageNamePolicies.java |  81 +++++++++++
+    PackageNamePolicy.java   |  41 ++++++
+    PackageURL.java          |  46 +++-------
+
+Refactoring A: what became more local? The decision about which normalisation
+rule a package type gets. It used to run down a switch inside a validation
+method; it now lives in PackageNamePolicies.forType, which is the only place
+to look or to edit. The extra structure is one interface and one resolver
+class, which is real added weight: two files that did not exist before, to
+hold logic that was previously inline.
+
+Refactoring B: what has a single source of truth? The rule that qualifier
+keys are lowercase. What stayed separate on purpose: duplicate-key detection
+in the encoded-string path, and empty-value filtering plus overwrite
+behaviour in the Map path. Merging those to make the diff tidier would have
+changed behaviour.
+
+Why passing tests are necessary but not sufficient. Green tests only say I
+did not break what the suite already checks. They say nothing about whether
+the design improved, because a correct refactoring produces identical output
+by definition, so no test can tell the switch from the policy resolver.
+Tests also only cover the cases somebody thought to write, so the untested
+corners of validateName are exactly as untested as before. The tests are what
+let me claim behaviour was preserved; the design argument has to be made
+separately, by pointing at what now changes in one place instead of several.
+
+## Problem C: deliberately not implemented
+
+Package-type behaviour also appears in validateNamespace, validateVersion and
+verifyTypeConstraints, and a wider policy could eventually pull all of it onto
+one axis. I left it because a refactoring experiment you can actually verify
+has to stay small: each of these two changes is provable against the baseline
+in a single test run, whereas touching four methods at once would make it much
+harder to say which change caused a failure.
+
+## Final judgement
+
+Would I keep both in a real pull request? Yes, but as two separate ones.
+
+Benefit: adding a package type with an unusual name rule is now a one-line
+change in forType plus at most one new policy constant, instead of editing a
+switch buried in a validation method. The qualifier helper means the lowercase
+rule cannot drift between the two parsing paths.
+
+Trade-off: Refactoring A adds two files and one level of indirection to
+replace a switch that was perfectly readable. A reviewer could fairly argue I
+traded an obvious thing for a slightly less obvious one, and that the payoff
+only arrives if more type-specific name rules show up. The package-url spec
+suggests they will, but that is a bet, not a certainty. Refactoring B is far
+easier to defend: small, removes a duplicated rule, adds no structure.
+
+## Repository
+
+| Record | Evidence |
+| --- | --- |
+| Repository URL | https://github.com/seancoughlan29/packageurl-java-cs4928-lab2 |
+| Refactoring B commit SHA | c5eadfd542dfd01bc0721685d09ea086aee77078 |
+
+The final HEAD SHA after this evidence commit is shown to the coordinator with
+git rev-parse HEAD, not stored in this file.
