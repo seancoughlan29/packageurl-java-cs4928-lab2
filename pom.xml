@@ -142,7 +142,7 @@
     <jmh.version>1.37</jmh.version>
     <json.version>20260719</json.version>
     <junit-bom.version>5.13.3</junit-bom.version>
-    <maven-surefire-junit5-tree-reporter.version>1.4.0</maven-surefire-junit5-tree-reporter.version>
+    <maven-surefire-junit5-tree-reporter.version>1.5.1</maven-surefire-junit5-tree-reporter.version>
   </properties>
 
   <dependencyManagement>
