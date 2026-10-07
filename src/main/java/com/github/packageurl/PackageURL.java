@@ -398,31 +398,7 @@ public final class PackageURL implements Serializable {
         if (value.isEmpty()) {
             throw new MalformedPackageURLException("The PackageURL name specified is invalid");
         }
-        String temp;
-        switch (type) {
-            case StandardTypes.APK:
-            case StandardTypes.BITBUCKET:
-            case StandardTypes.BITNAMI:
-            case StandardTypes.COMPOSER:
-            case StandardTypes.DEB:
-            case StandardTypes.GITHUB:
-            case StandardTypes.GOLANG:
-            case StandardTypes.HEX:
-            case StandardTypes.LUAROCKS:
-            case StandardTypes.OCI:
-                temp = StringUtil.toLowerCase(value);
-                break;
-            case StandardTypes.PUB:
-                temp = StringUtil.toLowerCase(value).replaceAll("[^a-z0-9_]", "_");
-                break;
-            case StandardTypes.PYPI:
-                temp = StringUtil.toLowerCase(value).replace('_', '-');
-                break;
-            default:
-                temp = value;
-                break;
-        }
-        return temp;
+        return PackageNamePolicies.forType(type).normalize(value);
     }
 
     private static @Nullable String validateVersion(final String type, final @Nullable String value) {
